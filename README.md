@@ -1,67 +1,71 @@
 # rae.nvim
-<<<<<<< HEAD
-Un plugin de neovim para consultar definiciones de la RAE vía rae-api.com. No es información oficial de la RAE ni está afiliado a esta institución de ninguna forma.
-=======
 
-Consulta el Diccionario de la Lengua Española desde Neovim, sin salir del editor.
+Consulta el Diccionario de la Real Academia Española desde Neovim.
 
-> **Aviso:** `rae.nvim` es un proyecto **no oficial**, no afiliado ni respaldado por la Real Academia Española. Los datos provienen de [rae-api.com](https://rae-api.com), un servicio no oficial. Usalo bajo tu responsabilidad y respetá los límites del servicio.
+> **Aviso:** `rae.nvim` es un proyecto **no oficial**, no afiliado ni respaldado por la Real Academia Española. Los datos provienen de [rae-api.com](https://rae-api.com), un servicio no oficial con acceso gratuito para uso personal.
 
 ## Características
 
 - **`:RAEDef`** — muestra la definición completa de la palabra bajo el cursor (etimología, acepciones y locuciones) en un buffer flotante o en un split.
-- **`:RAESin`** — abre un picker (Telescope) con los sinónimos y antónimos de la palabra bajo el cursor. `<CR>` reemplaza la palabra en el buffer con la elegida.
+- **`:RAESin`** — abre un picker de Telescope con los sinónimos y antónimos de la palabra bajo el cursor. Se puede hacer fuzzy search y `<CR>` reemplaza la palabra en el buffer con la elegida.
+- Funciona en modo visual: si selecciona el comienzo de una palabra consulta esa forma exacta. Útil para plurales y conjugaciones que la RAE no indexa (ej. `normas` no tiene sinónimos, pero `norma` sí).
 - Tres modos de visualización para la definición: flotante pegado al cursor, flotante abajo, o split tradicional.
 - Normalización NFC automática: las tildes escritas como caracteres combinados (típico en macOS) funcionan igual.
 - Manejo de errores claro: palabra inexistente, API key inválida, límite de consultas.
 
 ## Requisitos
 
-- Neovim ≥ 0.9
+- Neovim ≥ 0.10
 - [telescope.nvim](https://github.com/nvim-telescope/telescope.nvim)
-- [plenary.nvim](https://github.com/nvim-lua/plenary.nvim)
 - Una API key gratuita de [rae-api.com](https://rae-api.com) (5000 consultas/día). La key es opcional: sin ella, la API permite 10 req/min y 100 req/día.
+- Requiere `curl` en el PATH (para consultar la API).
 
 ## Instalación
 
 ### lazy.nvim (LazyVim)
 
 ```lua
-{
-  "tu-usuario/rae.nvim",
-  dependencies = {
-    "nvim-telescope/telescope.nvim",
-    "nvim-lua/plenary.nvim",
+return {
+  {
+    "fsarud/rae.nvim",
+    name = "rae.nvim",
+    main = "rae",
+    lazy = false,
+    dependencies = {
+      "nvim-telescope/telescope.nvim",
+    },
+    opts = {
+      -- api_key = "rae_live_...",  -- o exporte RAE_API_KEY
+      -- display = "float_cursor",  -- "float_cursor" | "float_bottom" | "split"
+      mappings = false, -- los mappings se definen abajo, en `keys`
+    },
+    keys = {
+      { "<leader>rd", "<cmd>RAEDef<cr>", desc = "RAE: definición", mode = "n" },
+      { "<leader>rs", "<cmd>RAESin<cr>", desc = "RAE: sinónimos/antónimos", mode = "n" },
+      { "<leader>rd", ":'<,'>RAEDef<cr>", desc = "RAE: definición (visual)", mode = "v" },
+      { "<leader>rs", ":'<,'>RAESin<cr>", desc = "RAE: sinónimos (visual)", mode = "v" },
+    },
   },
-  opts = {
-    -- api_key = "rae_live_...",  -- o exportá RAE_API_KEY en tu shell
-    -- display = "float_cursor",  -- "float_cursor" | "float_bottom" | "split"
-  },
-  keys = {
-    { "<leader>rd", "<cmd>RAEDef<cr>", desc = "RAE: definición" },
-    { "<leader>rs", "<cmd>RAESin<cr>", desc = "RAE: sinónimos/antónimos" },
+  -- Opcional: agrega título al grupo de binds en which-key
+  {
+    "folke/which-key.nvim",
+    opts = {
+      spec = {
+        { "<leader>r", group = "Diccionario RAE", icon = "📖" },
+      },
+    },
   },
 }
 ```
 
-### packer.nvim
-
-```lua
-use {
-  "tu-usuario/rae.nvim",
-  requires = { "nvim-telescope/telescope.nvim", "nvim-lua/plenary.nvim" },
-  config = function()
-    require("rae").setup({})
-  end,
-}
-```
+(Si define los mappings en `keys` de lazy (como en el ejemplo), ponga `mappings = false` en `opts` para evitar duplicarlos).
 
 ### Configuración
 
 ```lua
 require("rae").setup({
   -- API key. Si es nil, se usa vim.env.RAE_API_KEY.
-  -- Registrate gratis en https://rae-api.com para obtener la tuya.
+  -- Regístrese gratis en https://rae-api.com para obtener la suya.
   api_key = nil,
 
   -- Modo de visualización de la definición:
@@ -70,8 +74,9 @@ require("rae").setup({
   --   "split"        → split horizontal inferior (se cierra con q)
   display = "float_cursor",
 
-  -- Mappings por defecto. Poné false para no crear ninguno.
-  -- mappings = false,
+  -- mappings = false, 
+  -- Mappings por defecto. Ponga false para no crear ninguno
+  -- (por ejemplo, si los define en `keys` de lazy.nvim).
   mappings = {
     definition = "<leader>rd",
     synonyms   = "<leader>rs",
@@ -87,23 +92,27 @@ require("rae").setup({
 
 ### API key
 
-No hardcodees la key en tu config si compartís el dotfiles. Preferí una variable de entorno:
+Si no quiere hardcodear su API key en su config (si comparte dotfiles), puede usar una variable de entorno:
 
 ```sh
 # ~/.zshrc, ~/.bashrc, etc.
 export RAE_API_KEY="rae_live_..."
 ```
 
-Si preferís configurarla en Lua, setup({ api_key = "..." }) funciona, pero tené en cuenta que el archivo queda en texto plano.
+(Si prefiere configurarla directamente en Lua, setup({ api_key = "..." }) funciona, pero tenga en cuenta que el archivo queda en texto plano).
 
 ### Uso
 
-Poné el cursor sobre una palabra y:
-Comando Mapping por defecto Acción
-:RAEDef <leader>rd Muestra la definición completa
-:RAESin <leader>rs Abre el picker de sinónimos/antónimos
+Ponga el cursor en modo normal sobre una palabra y:
 
-También podés pasar la palabra como argumento:
+| Comando   | Mapping por defecto | Modo    | Acción |
+|-----------|---------------------|---------|--------|
+| `:RAEDef` | `<leader>rd`        | Normal  | Muestra la definición completa en un flotante o split |
+| `:RAEDef` | `<leader>rd`        | Visual  | Muestra la definición de la selección |
+| `:RAESin` | `<leader>rs`        | Normal  | Abre el picker de sinónimos/antónimos |
+| `:RAESin` | `<leader>rs`        | Visual  | Abre el picker para la selección; `<CR>` la reemplaza |
+
+También puede pasar la palabra buscada como argumento:
 
 ```vim
 :RAEDef alegoría
@@ -112,19 +121,19 @@ También podés pasar la palabra como argumento:
 
 En el picker de sinónimos:
 
-- Escribí para filtrar (fuzzy finding sobre la palabra).
-- <CR> reemplaza la palabra original en el buffer con la elegida.
-- <Esc> o q cierra sin cambios.
+- Escriba para filtrar (fuzzy sobre la palabra).
+- `<CR>` reemplaza la palabra original en el buffer con la elegida.
+- `<Esc>` o q cierra sin cambios.
 
 En el flotante de definición:
 
-- q cierra la ventana.
-- El buffer es de solo lectura y markdown: podés hacer gf, buscar, etc.
+- `q` cierra la ventana.
+- El buffer es de solo lectura y markdown: puede hacer `gf`, buscar, etc.
 
 ### Limitaciones conocidas
 
-- Sin caché todavía: cada consulta golpea la API. Si consultás mucho, considerá exportar RAE_API_KEY para tener 5000 req/día.
-- El flotante se cierra al mover el cursor fuera de la palabra. Si te molesta, cambiá display = "split".
+- No hay caché implementado: cada consulta va a la API.
+- El flotante se cierra al mover el cursor fuera de la palabra. Si le molesta, pruebe cambiar a display = "split".
 - No se muestran sinónimos/antónimos de locuciones (solo de las acepciones principales).
 
 ### Créditos
@@ -135,7 +144,4 @@ En el flotante de definición:
 
 ### Licencia
 
-MIT. Ver LICENSE.
-
 El código de este plugin está bajo MIT. Los datos devueltos por rae-api.com pertenecen a sus respectivos titulares y están sujetos a los términos de ese servicio.
->>>>>>> 2be1e81 (Primer commit)

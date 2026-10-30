@@ -101,6 +101,10 @@ local function open_split(lines, buf)
 	vim.cmd("botright new")
 	local win = vim.api.nvim_get_current_win()
 	vim.api.nvim_win_set_buf(win, buf)
+
+	local height = math.max(3, math.floor(vim.o.lines * 0.2))
+	vim.cmd("resize " .. height)
+
 	return win
 end
 
